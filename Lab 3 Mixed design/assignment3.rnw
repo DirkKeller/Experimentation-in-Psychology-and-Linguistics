@@ -1,0 +1,217 @@
+\documentclass{article}
+\usepackage[top=1in,bottom=1in,left=1in,right=1in]{geometry}
+
+\usepackage{setspace}
+
+\usepackage{hyperref}
+\hypersetup{colorlinks=true, urlcolor=blue, breaklinks=true}
+
+\newcommand{\link}[1]{\footnote{\color{blue}\href{#1}{#1}}}
+\newcommand{\myhref}[1]{\href{#1}{#1}}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{linguex}
+\usepackage{natbib}
+
+%\usepackage{Sweave}
+
+<<include=FALSE>>=
+opts_chunk$set(fig.path='figures/figure')
+@
+
+<<include=FALSE>>=
+opts_chunk$set(tidy=TRUE)
+@
+
+% The package for linguistics examples
+
+\title{Lab assignment 3: generalized linear mixed-effects models and selfies}
+\author{}
+\date{Deadline: 30.3., 6pm}
+
+\begin{document}
+\setkeys{Gin}{width=0.7\textwidth}
+
+\maketitle
+
+\section{General lab information}
+
+This assignment consists of two parts. There are group assignments and individual assignments. Group assignments should be shown to your teacher and get graded directly \emph{during the lab meeting}. Answers to individual questions should be submitted to Blackboard via a Blackboard quiz. If the question does not specify what type of question it is, it is a group question (there is only one individual question in this assignment).
+
+There are 10 points in the assignment (2 per question).
+
+More details on the whole procedure:
+
+You work in groups of 3 or 4 on these exercises, with help from a teacher/teaching assistant. We expect you to work on these exercises in class time so you can work with your group and teacher. It is not acceptable to miss these classes without agreement from your group, or to repeatedly miss classes. Then you will fail the assignment, which leads to failing the course. If your group members miss lab classes without agreement from your group, please inform your teacher.
+
+We suggest all group members doing these exercises on their individual computers simultaneously: this improves (student) learning and also makes it easier to find mistakes. Don't rely on other group members' answers if you don't understand why they are correct: this is meant to be an interactive collaboration with your group, so ask your group members to explain. If your group gets stuck on a question or different group members can't agree on an answer, ask for help from your teacher. Please share your video if bandwidth and circumstances allow. This makes for a more personal conversation.
+
+When your group is happy with your answer, work together to finalize your answer in a document shared with the whole group. Show these answers to your teacher as you work. You can share this document with the teacher too. Your teacher will grade you as you work to monitor your progress and address problems. But we need a record of all your answers, submitted at the end of the assignment (via Blackboard). At the end, you should submit one pdf file, which also includes your R calculations and code. You could either copy-paste your R code into the file, or, better, you could use an engine for dynamic report with R like knitr.\link{https://yihui.org/knitr/} The assignment, including your answer to the individual question, has to be submitted on Blackboard by \emph{Tuesday, 6pm, March 30}.
+
+In group questions, it is generally best to start by asking every group member's opinion. Then work on a written answer together. Then explain your answer to your teacher. You can also ask your teacher to read what you wrote, but they will often ask questions. It is likely you will then have to update this answer after talking with your teacher. Please tell your teacher what changes you made next time you talk and show them what you wrote.
+
+Many questions build on previous questions being completed correctly, so you should be confident of your answer before using it in further questions: ask for help if you are unsure. If you get stuck and the teacher can't get help immediately, you can move on to the next topic until your teacher can help.
+
+\section{Introduction}
+
+In this assignment, you will work with selfies data. I discussed these data in one of the lectures. Unlike in the lecture you will work with a full dataset. The data collected in the experiment studied reactions to selfies.
+
+Your task will be to analyze selected data and practice mixed-effects modeling.
+
+We will be focusing on the role of gender in people's reactions to selfies. The gender category is quite simplified in the data study: the dataset treats the category as binary and the study is not very explicit in how the gender category was collected. From the brief description of the data, it seems that the investigated selfies were downloaded from social media and the gender category was just one of the tags collected with the downloaded selfies. Investigation of these and other issues of gender in data collection would likely be, on its own, an interesting commentary on social issues and constructs. However, for the purpose of this assignment, we just accept the categorization as is in the dataset.
+
+\section{What will you hand in?}
+
+You will hand in a pdf file with the analysis. The pdf file should include the
+code you used and the code should include all the steps, from loading the csv files up to the analysis required of you in questions. Aside from that, you have to respond to individual questions on Blackboard.
+
+\section{What can you use?}
+
+You can use R and any packages you find useful (unless some questions explicitly prohibit that). Some packages are even recommended to use. You also can (and should) reuse the code present in these assignment instructions. For an ease of reuse, we put the code separately into an R (knitr) file.
+
+\section{Data preparation}
+
+We start by loading useful packages (dplyr for data manipulation and ggplot2 for graphics) and loading data as data frames and checking the structure of the data frames.
+
+<<echo=TRUE>>=
+
+library(dplyr)
+library(ggplot2)
+
+selfies <- read.csv("selfies.csv")
+str(selfies)
+
+@
+
+The columns in those data:
+\begin{itemize}
+    \item ResponseId: participant ID
+    \item Dur: How long did the experiment take?
+    \item Age, Country, Gender: Age, country and gender of each participant?
+    \item Selfietaking: How often each participant takes selfies.
+    \item StimGender: The gender of the person on the selfie.
+    \item Tilt: Is the selfie tilted or not?
+    \item Distance: Is the person on the selfie very close to the camera or not?
+    \item Eyes: Does the person on the selfie stay close to or far away from the camera?
+    \item Boring, Funny Ironic, Serious, Ugly: Is the selfie boring, funny, ironic, serious, ugly? A scale ranging from 1 to 5 (1-lowest, 5 highest)
+\end{itemize}
+
+
+\section*{Q1: Does the gender of the selfie-taker predict boringness responses?} 
+
+We will work with Boring responses. Prepare your dataset and test using t-test whether male selfies are seen as less/more  boring than female selfies. Make sure to develop the correct t-test (keep in mind you might have to do some transformations on the data and decide whether the test is paired/unpaired; it might also help to think about how many degrees of freedom the test should have).
+
+Then, develop a mixed-effects model with logit link (i.e., a logistic mixed-effects model) to address the same question. First, since this model requires a yes-no outcome, create a new variable called BoringYesNo. Then, transform each \textit{Boring} response as follows:
+\begin{itemize}
+    \item Response in \textit{Boring}: 1 or 2 $\Rightarrow$ BoringYesNo: 0
+    \item Response in \textit{Boring}: 4 or 5 $\Rightarrow$ BoringYesNo: 1
+    \item Response in \textit{Boring}: 3 $\Rightarrow$ BoringYesNo: NA (not available, i.e., a missing data)
+\end{itemize}
+
+Then, build a model that tests whether StimGender is a significant predictor for BoringYesNo. Check also whether this model provides a better fit to data than the model without the StimGender predictor. Keep in mind that this should be a mixed-effects model. Try to use the maximal random-effects structure that converges but use only subjects as random factors.
+
+Do you find similarities and differences in the model? Do both approaches give the same answer wrt the significance of StimGender?
+
+\section*{Q2: Reasoning about the model}
+
+Criticize the t-test and logistic mixed-effects models that you just created. While they are (hopefully) right from the statistical perspective, would you conclude from them that general population finds male selfies significantly more/less boring than female selfies? Think about the following issues: data aggregation/transformation, confounds, balancing in the data. All these issues might make it dubious that one can conclude that male selfies are generally found signficantly more/less boring than female selfies.
+
+\section*{Q3: Predictions of the model}
+
+We will now look at deterministic predictions of logistic mixed-effects models.
+
+Suppose you are still interested in boringness of selfies based on the gender of the selfie-taker but you add one confound into the picture: the gender of the person that judges the selfie. You want to see whether females judge male selfies as more boring than female selfies and whether male judgements differ. You furthermore add subjects random effects and have the maximal random effect structure that converges. So, you are thinking of this model:
+
+<<echo=TRUE>>=
+#BoringYesNo ~ 1 + StimGender*Gender + (1 + StimGender * Gender | ResponseId )
+@
+
+Or some simpler version in the random structure, if this one does not converge.
+
+Create the mixed-effects model.
+
+Second, check predictions of your model. What does the model predict on unseen data? Suppose you got the dataset novel\_data. You want to see what the model that you just created predicts for those data. With what probability will be each selfie (each row) considered as ugly by a median subject? (Saying that you make predictions for a median subject is just another way to say that you can assume random effects are zero, i.e., you can ignore them.)
+
+<<echo=TRUE>>=
+
+novel_selfies <- read.csv("novel_data.csv")
+
+@
+
+First, calculate for each combination of the values in novel\_data what probability your model estimates.
+
+Once you are confident you can do this, calculate probabilities for all the rows (400 data points).
+
+As a final check, load the following function:
+
+<<echo=TRUE>>=
+
+drawprobabilities <- function(probs) {
+
+    if (length(probs) != 400) {
+        print("Wrong length of the vector of calculated probabilities. Should be 400 data points.")
+    }
+    else {
+
+    matrixprobs <- matrix(ifelse(probs>0.5, "X", ""), nrow=20)
+
+    x <- rep(NA, 400)
+    y <- rep(NA, 400)
+
+    k <- 1
+
+    for (i in 1:20) {
+        for (j in 1:20) {
+            if (matrixprobs[i, j] == "X") {
+                y[k] <- i
+                x[k] <- j
+                k <- k+1
+            }
+        }
+    }
+
+    plot(x, y, xlim=c(0, 40), ylim=c(0, 40), pch=15)
+
+    }
+
+}
+
+@
+
+Now, run the function \textit{drawprobabilities} with the argument the vector of predicted probabilities (e.g, if you stored your vector of predicted probabilities for novel\_data as mypredictions, you would call it as drawprobabilities(mypredictions)). If everything was correct, you should see a picture as a result. What picture do you see?
+
+\section*{Q4: Ordinal model}
+
+We will now inspect the original ordinal responses in the data (no transformation). You should use the package \emph{ordinal} here.
+
+Try to establish whether male selfies are considered more boring than female selfies. However, unlike in Q1 -- Q3, use the original non-transformed response and model it using the ordered probit link function. Furthermore, try to control for various confounds that might obscure the effect of boringness of male selfies. Don't go beyond the data provided here (i.e., you might think of various other confounds that might be affecting the results but as long as they were not collected, you can ignore them). Discuss what you found. Can you conclude that male selfies generally significantly differ from female ones wrt boringness? Or is the difference more restricted and driven by specific factors?
+
+<<echo=TRUE>>=
+library(ordinal)
+
+# model investigation here
+@
+
+\section*{Q5: Inspecting ordinal model (individual component)}
+
+Check a simple ordinal model with only one condition (StimGender) and intercept-only random effects per subjects, i.e., use this formula on the ordinal model:
+
+<<echo=TRUE>>=
+
+#Boring ~ StimGender + (1|ResponseId)
+
+@
+
+Check the output of the model and answer the following three questions:
+
+\begin{enumerate}
+    \item Are 1-5 responses selected equally likely?
+    \item Which of the values 1-5 does the model estimate to be the most likely response for the male StimGender?
+    \item It is sometimes suggested that in Likert scale, the middle response (i.e., 3) should be removed and scales should be even because otherwise people will predominantly go for the middle, non-committal response, and the results will be useless. Based on your findings, is this justified?
+\end{enumerate}
+
+Hint: You will need to look at thresholds and translate those into probabilities on standardized normal distribution (i.e., normal distribution with mean 0 and st.d. 1). You will probably want to use pnorm. When you consider a condition, you will have to move the mean. If you are lost, go back into the last slides of the last lecture, or check discussions of ordinal models in the last video and on Wikipedia.
+
+\end{document}
